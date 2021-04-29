@@ -3,6 +3,7 @@ package spring.rest.dht.service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import spring.rest.dht.model.Address;
+import spring.rest.dht.model.Data;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -43,6 +44,16 @@ public class NodeImpl implements Node {
     @Override
     public Set<Map<String, String>> getNodes() {
         return nodes;
+    }
+
+    @Override
+    public ConcurrentHashMap<String, String> getStorage() {
+        return storage;
+    }
+
+    @Override
+    public void put(Data value) {
+        storage.put(sha1(value.getValue()), value.getValue());
     }
 
     @Override

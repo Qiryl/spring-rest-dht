@@ -7,11 +7,13 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import spring.rest.dht.model.Address;
+import spring.rest.dht.model.Data;
 import spring.rest.dht.service.Node;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping
@@ -47,6 +49,16 @@ public class DhtController {
         return node.getNodes();
     }
 
+    // curl -H "Content-Type: application/json" -X POST -d '{"id":"1", "value":"value on 8080"}' http://localhost:8080/put
+    @PostMapping("/put")
+    public void put(@RequestBody Data value) {
+        System.out.println("putting value");
+        node.put(value);
+    }
 
+    @GetMapping(value = "/storage", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ConcurrentHashMap<String, String> storage() {
+        return node.getStorage();
+    }
 
 }
