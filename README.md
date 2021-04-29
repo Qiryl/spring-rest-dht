@@ -9,3 +9,5 @@
 #### Add the last one to all the rest
     # curl -H "Content-Type: application/json" -X POST -d '{"ip":"localhost", "port":"8080"}' http://localhost:8082/join
     # curl -H "Content-Type: application/json" -X POST -d '{"ip":"localhost", "port":"8081"}' http://localhost:8082/join
+
+As a result, each node will be connected to all others 
