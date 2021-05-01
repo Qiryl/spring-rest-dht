@@ -24,7 +24,7 @@ public class DhtController {
 
     @GetMapping
     public String currentNode() {
-        return node.getIp() + ":" + node.getPort();
+        return node.getIp() + ":" + node.getPort() + " -- " + node.getId();
     }
 
     @PostMapping("/join")
@@ -49,16 +49,39 @@ public class DhtController {
         return node.getNodes();
     }
 
-    // curl -H "Content-Type: application/json" -X POST -d '{"id":"1", "value":"value on 8080"}' http://localhost:8080/put
+    @GetMapping(value = "/tmp", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Set<Long> tmp() {
+        return node.getTmp();
+    }
+
     @PostMapping("/put")
     public void put(@RequestBody Data value) {
-        System.out.println("putting value");
-        node.put(value);
+        var responsibleNode = node.responsibleNode(Node.sha1(value.getValue()));
+        if (value.getId() == null) {
+            HttpHeaders headers = new HttpHeaders();
+            RestTemplate restTemplate = new RestTemplate();
+
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            Map<String, String> data = new HashMap<String, String>();
+            data.put("id", Node.sha1(value.getValue()));
+            data.put("value", value.getValue());
+            HttpEntity<Map<String, String>> entity = new HttpEntity<Map<String, String>>(data, headers);
+
+            restTemplate.postForObject("http://" + responsibleNode.get("ip") + ":" + responsibleNode.get("port") + "/put", entity, Void.class);
+        } else {
+            node.put(value);
+        }
+    }
+
+    @GetMapping("/storage/{key}")
+    public String getValue(@PathVariable String key) {
+        return node.getValue(key);
     }
 
     @GetMapping(value = "/storage", produces = MediaType.APPLICATION_JSON_VALUE)
     public ConcurrentHashMap<String, String> storage() {
         return node.getStorage();
+
     }
 
 }

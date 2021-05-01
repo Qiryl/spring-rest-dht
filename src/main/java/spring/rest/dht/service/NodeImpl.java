@@ -1,16 +1,15 @@
 package spring.rest.dht.service;
 
+import org.apache.tomcat.util.buf.HexUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import spring.rest.dht.model.Address;
 import spring.rest.dht.model.Data;
 
+import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
@@ -21,10 +20,11 @@ public class NodeImpl implements Node {
     private String port;
 
     private Set<Map<String, String>> nodes = new HashSet<Map<String, String>>();
+    private Set<Long> tmp = new TreeSet<Long>();
     private ConcurrentHashMap<String, String> storage = new ConcurrentHashMap<String, String>();
 
     public NodeImpl(@Value("${server.address}") String ip, @Value("${server.port}") String port) {
-        this.id = sha1(ip + port);
+        this.id = sha1(ip + port).toString();
         this.ip = ip;
         this.port = port;
     }
@@ -47,6 +47,11 @@ public class NodeImpl implements Node {
     }
 
     @Override
+    public Set<Long> getTmp() {
+        return tmp;
+    }
+
+    @Override
     public ConcurrentHashMap<String, String> getStorage() {
         return storage;
     }
@@ -57,12 +62,41 @@ public class NodeImpl implements Node {
     }
 
     @Override
+    public String getValue(String key) {
+        return storage.get(key);
+    }
+
+    private static Long weight(Map<String, String> node, String key) {
+        var bytes = HexUtils.fromHexString(sha1(node.get("ip") + node.get("port") + key));
+        return ByteBuffer.wrap(bytes).getLong();
+    }
+
+    @Override
+    public Map<String, String> responsibleNode(String key) {
+        long weight;
+        long maxWeight = 0;
+        var candidate = nodes.iterator().next();
+
+        for (var node : nodes) {
+            weight = weight(node, key);
+            if (weight > maxWeight) {
+                maxWeight = weight;
+                candidate = node;
+            }
+        }
+
+        return candidate;
+    }
+
+    @Override
     public void join(Address address) {
         var node = new HashMap<String, String>();
-        node.put("id", sha1(address.getIp() + address.getPort()));
+        node.put("id", sha1(address.getIp() + address.getPort()).toString());
         node.put("ip", address.getIp());
         node.put("port", address.getPort());
         nodes.add(node);
+        var bytes = HexUtils.fromHexString(sha1(address.getIp() + address.getPort()));
+        tmp.add(ByteBuffer.wrap(bytes).getLong());
     }
 
     @Override
@@ -76,20 +110,15 @@ public class NodeImpl implements Node {
         return true;
     }
 
-    private static String sha1(String input) {
+    public static String sha1(String input) {
         String sha1 = null;
         try {
             MessageDigest mDigest = MessageDigest.getInstance("SHA1");
             byte[] result = mDigest.digest(input.getBytes());
-            StringBuffer sb = new StringBuffer();
-            for (int i = 0; i < result.length; i++) {
-                sb.append(Integer.toString(result[i], 2).substring(1));
-            }
-            sha1 = sb.toString();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        }
+            sha1 = HexUtils.toHexString(result);
+        } catch (NoSuchAlgorithmException e) { e.printStackTrace(); }
         return sha1;
     }
+
 
 }
