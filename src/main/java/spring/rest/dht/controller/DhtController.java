@@ -22,6 +22,8 @@ public class DhtController {
     @Autowired
     Node node;
 
+    // TODO: make resttemplate general
+
     @GetMapping
     public String currentNode() {
         return node.getIp() + ":" + node.getPort() + " -- " + node.getId();
@@ -73,15 +75,23 @@ public class DhtController {
         }
     }
 
-    @GetMapping("/storage/{key}")
+    @GetMapping(value = "/storage/{key}")
     public String getValue(@PathVariable String key) {
-        return node.getValue(key);
+        String value = node.getValue(key);
+        if (value != null) {
+            return value;
+        } else {
+            var resposibleNode = node.responsibleNode(key);
+            RestTemplate restTemplate = new RestTemplate();
+            String url = "http://" + resposibleNode.get("ip") + ":" + resposibleNode.get("port") + "/storage/" + key;
+            String result = restTemplate.getForObject(url, String.class);
+            return result;
+        }
     }
 
     @GetMapping(value = "/storage", produces = MediaType.APPLICATION_JSON_VALUE)
     public ConcurrentHashMap<String, String> storage() {
         return node.getStorage();
-
     }
 
 }

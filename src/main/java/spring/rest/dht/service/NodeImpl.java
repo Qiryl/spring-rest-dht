@@ -57,13 +57,13 @@ public class NodeImpl implements Node {
     }
 
     @Override
-    public void put(Data value) {
-        storage.put(sha1(value.getValue()), value.getValue());
+    public String getValue(String key) {
+        return storage.get(key);
     }
 
     @Override
-    public String getValue(String key) {
-        return storage.get(key);
+    public void put(Data value) {
+        storage.put(sha1(value.getValue()), value.getValue());
     }
 
     private static Long weight(Map<String, String> node, String key) {
