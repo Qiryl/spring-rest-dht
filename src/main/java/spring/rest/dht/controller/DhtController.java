@@ -1,6 +1,8 @@
 package spring.rest.dht.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringApplication;
+import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -20,9 +22,13 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DhtController {
 
     @Autowired
-    Node node;
+    private Node node;
+
+    @Autowired
+    private ApplicationContext context;
 
     // TODO: make resttemplate general
+
 
     @GetMapping
     public String currentNode() {
@@ -92,6 +98,31 @@ public class DhtController {
     @GetMapping(value = "/storage", produces = MediaType.APPLICATION_JSON_VALUE)
     public ConcurrentHashMap<String, String> storage() {
         return node.getStorage();
+    }
+
+    @GetMapping("/delete")
+    public void delete() {
+        var storage = node.getStorage();
+
+        HttpHeaders headers = new HttpHeaders();
+        RestTemplate restTemplate = new RestTemplate();
+        Data data = new Data();
+        Map<String, String> responsibleNode = null;
+        HttpEntity<Data> entity;
+        String url;
+
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        for (var entry : storage.entrySet()) {
+            responsibleNode = node.responsibleNode(entry.getKey());
+            url = "http://" + responsibleNode.get("ip") + ":" + responsibleNode.get("port") + "/put";
+
+            data.setId(entry.getKey());
+            data.setValue(entry.getValue());
+
+            entity = new HttpEntity<Data>(data, headers);
+            restTemplate.postForObject(url, entity, Void.class);
+        }
+        SpringApplication.exit(context, () -> 0);
     }
 
 }

@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class DhtApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(DhtApplication.class, args);
+		var ctx = SpringApplication.run(DhtApplication.class, args);
 	}
 
 }
