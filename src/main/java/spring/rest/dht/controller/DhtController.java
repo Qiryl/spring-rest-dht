@@ -27,9 +27,6 @@ public class DhtController {
     @Autowired
     private ApplicationContext context;
 
-    // TODO: make resttemplate general
-
-
     @GetMapping
     public String currentNode() {
         return node.getIp() + ":" + node.getPort() + " -- " + node.getId();
@@ -39,16 +36,36 @@ public class DhtController {
     public void join(@RequestBody Address address) {
         if(!node.isJoined(address)) {
             node.join(address);
+            var storage = node.getStorage();
 
             HttpHeaders headers = new HttpHeaders();
             RestTemplate restTemplate = new RestTemplate();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            Map<String, String> data = new HashMap<String, String>();
-            data.put("ip", node.getIp());
-            data.put("port", node.getPort());
-            HttpEntity<Map<String, String>> entity = new HttpEntity<Map<String, String>>(data, headers);
+            Data data = new Data();
+            Map<String, String> responsibleNode;
+            HttpEntity<Data> entity;
+            String url;
 
-            restTemplate.postForObject("http://" + address.getIp() + ":" + address.getPort() + "/join", entity, Void.class);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            for (var entry : storage.entrySet()) {
+                responsibleNode = node.responsibleNode(entry.getValue());
+                url = "http://" + responsibleNode.get("ip") + ":" + responsibleNode.get("port") + "/put";
+
+                data.setId(entry.getKey());
+                data.setValue(entry.getValue());
+
+                entity = new HttpEntity<Data>(data, headers);
+                node.deleteValue(entry.getKey());
+                restTemplate.postForObject(url, entity, Void.class);
+                System.out.println(entry + " -- " + responsibleNode);
+            }
+
+            Map<String, String> addr = new HashMap<String, String>();
+            addr.put("ip", node.getIp());
+            addr.put("port", node.getPort());
+            HttpEntity<Map<String, String>> httpEntity = new HttpEntity<Map<String, String>>(addr, headers);
+
+            restTemplate.postForObject("http://" + address.getIp() + ":" + address.getPort() + "/join", httpEntity, Void.class);
         }
     }
 
@@ -100,16 +117,30 @@ public class DhtController {
         return node.getStorage();
     }
 
-    @GetMapping("/delete")
-    public void delete() {
+    // curl -X DELETE "http://localhost:8081/delete?ip=localhost&port=8080"
+    @DeleteMapping("/delete")
+    public void delete(@RequestParam("ip") String ip, @RequestParam("port") String port) {
+        Address address = new Address();
+        address.setIp(ip);
+        address.setPort(port);
+        node.deleteNode(address);
+    }
+
+    @DeleteMapping("/")
+    public void deleteCurrentNode() {
         var storage = node.getStorage();
 
         HttpHeaders headers = new HttpHeaders();
         RestTemplate restTemplate = new RestTemplate();
         Data data = new Data();
-        Map<String, String> responsibleNode = null;
+        Map<String, String> responsibleNode;
         HttpEntity<Data> entity;
         String url;
+
+        for (var joined : node.getNodes()) {
+            url = "http://" + joined.get("ip") + ":" +joined.get("port") + "/delete?ip=" + node.getIp() + "&port=" + node.getPort();
+            restTemplate.delete(url);
+        }
 
         headers.setContentType(MediaType.APPLICATION_JSON);
         for (var entry : storage.entrySet()) {

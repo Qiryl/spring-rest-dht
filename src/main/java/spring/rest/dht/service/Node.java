@@ -18,9 +18,11 @@ public interface Node {
     public void join(Address address);
     public boolean isJoined(Address address);
     public Set<Map<String, String>> getNodes();
+    public void deleteNode(Address address);
 
     public ConcurrentHashMap<String, String> getStorage();
     public String getValue(String key);
+    public void deleteValue(String key);
 
     public void put(Data data);
     public Map<String, String> responsibleNode(String key);

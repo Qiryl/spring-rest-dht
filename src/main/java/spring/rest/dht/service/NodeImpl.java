@@ -47,6 +47,15 @@ public class NodeImpl implements Node {
     }
 
     @Override
+    public void deleteNode(Address address) {
+        Map<String, String> node = new HashMap<String, String>();
+        node.put("id", sha1(address.getIp() + address.getPort()).toString());
+        node.put("ip", address.getIp());
+        node.put("port", address.getPort());
+        nodes.remove(node);
+    }
+
+    @Override
     public Set<Long> getTmp() {
         return tmp;
     }
@@ -59,6 +68,11 @@ public class NodeImpl implements Node {
     @Override
     public String getValue(String key) {
         return storage.get(key);
+    }
+
+    @Override
+    public void deleteValue(String key) {
+        storage.remove(key);
     }
 
     @Override
