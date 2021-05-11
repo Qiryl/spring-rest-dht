@@ -1,15 +1,22 @@
 package spring.rest.dht.model;
 
 public class Data {
-    private String id;
+    private String key;
     private String value;
 
-    public String getId() {
-        return id;
+    public Data() { }
+
+    public Data(String key, String value) {
+        this.key = key;
+        this.value = value;
     }
 
-    public void setId(String id) {
-        this.id = id;
+    public String getId() {
+        return key;
+    }
+
+    public void setId(String key) {
+        this.key = key;
     }
 
     public String getValue() {

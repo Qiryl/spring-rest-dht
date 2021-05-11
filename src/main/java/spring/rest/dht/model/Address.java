@@ -1,11 +1,21 @@
 package spring.rest.dht.model;
 
-// wrapper class for id; ip; port
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import spring.rest.dht.service.Node;
+
+@Component
 public class Address {
 
     private String id;
     private String ip;
     private String port;
+
+    public Address(@Value("${server.address}") String ip, @Value("${server.port}") String port) {
+        this.id = Node.sha1(ip + port);
+        this.ip = ip;
+        this.port = port;
+    }
 
     public String getPort() {
         return port;
@@ -30,4 +40,14 @@ public class Address {
     public void setIp(String ip) {
         this.ip = ip;
     }
+
+    @Override
+    public String toString() {
+        return "Address{" +
+                "id='" + id + '\'' +
+                ", ip='" + ip + '\'' +
+                ", port='" + port + '\'' +
+                '}';
+    }
+
 }
