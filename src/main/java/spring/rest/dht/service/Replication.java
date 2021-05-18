@@ -8,10 +8,13 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 import spring.rest.dht.model.Address;
-import spring.rest.dht.model.Data;
 
+import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -46,27 +49,30 @@ public class Replication implements Dht {
     }
 
     @Override
-    public void putValue(Data data) {
-        if (data.getId() == null) {
-            data.setId(Node.sha1(data.getValue()));
-            node.putValue(data);
+    public void putValue(MultipartFile file) throws IOException {
+        node.put(file);
 
-            String url;
-            HttpEntity<Data> httpEntity;
-            httpHeaders.setContentType(MediaType.APPLICATION_JSON);
-            for (var joined : node.getJoinedNodes()) {
-                url = String.format("http://%s:%s/put", joined.getIp(), joined.getPort());
-                httpEntity = new HttpEntity<Data>(new Data(data.getId(), data.getValue()), httpHeaders);
-                restTemplate.postForObject(url, httpEntity, Void.class);
-            }
-        } else {
-            node.putValue(data);
+        String url;
+        HttpEntity<MultiValueMap<String, Object>> httpEntity;
+        httpHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", file.getResource());
+
+        for (var joined : node.getJoinedNodes()) {
+            url = String.format("http://%s:%s/put/receiver", joined.getIp(), joined.getPort());
+            httpEntity = new HttpEntity<>(body, httpHeaders);
+            restTemplate.postForObject(url, httpEntity, Void.class);
         }
     }
 
     @Override
+    public void putDirect(MultipartFile file) throws IOException {
+        node.put(file);
+    }
+
+    @Override
     public String getValue(String key) {
-        return node.getValue(key);
+        return node.get(key);
     }
 
     @Override

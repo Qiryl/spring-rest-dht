@@ -3,9 +3,11 @@ package spring.rest.dht.service;
 import org.apache.tomcat.util.buf.HexUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 import spring.rest.dht.model.Address;
-import spring.rest.dht.model.Data;
 
+import java.io.File;
+import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HashSet;
@@ -49,7 +51,7 @@ public class Node {
         return storage;
     }
 
-    public String getValue(String key) {
+    public String get(String key) {
         return storage.get(key);
     }
 
@@ -57,12 +59,17 @@ public class Node {
         storage.remove(key);
     }
 
-    public void putValue(Data data) {
-        if (data.getId() != null) {
-            storage.put(data.getId(), data.getValue());
-        } else {
-            storage.put(sha1(data.getValue()), data.getValue());
-        }
+    public void put(MultipartFile file) throws IOException {
+        storage.put(sha1(file.getOriginalFilename()), file.getOriginalFilename());
+        System.out.println(System.getProperty("user.dir") + "/storage/" + file.getOriginalFilename());
+        File destination = new File(
+                System.getProperty("user.dir") +
+                        "/storage/" +
+                        address.getIp() + ":" + address.getPort() + "/" +
+                        file.getOriginalFilename()
+        );
+        destination.mkdirs();
+        file.transferTo(destination);
     }
 
     public static String sha1(String input) {
@@ -75,4 +82,13 @@ public class Node {
         return sha1;
     }
 
+    public static String sha1(byte[] input) {
+        String sha1 = null;
+        try {
+            MessageDigest mDigest = MessageDigest.getInstance("SHA1");
+            byte[] result = mDigest.digest(input);
+            sha1 = HexUtils.toHexString(result);
+        } catch (NoSuchAlgorithmException e) { e.printStackTrace(); }
+        return sha1;
+    }
 }

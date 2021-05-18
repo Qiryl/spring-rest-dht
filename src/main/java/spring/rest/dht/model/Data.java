@@ -1,12 +1,13 @@
 package spring.rest.dht.model;
 
-public class Data {
+import org.springframework.core.io.Resource;
+import java.io.Serializable;
+
+public class Data implements Serializable {
     private String key;
-    private String value;
+    private Resource value;
 
-    public Data() { }
-
-    public Data(String key, String value) {
+    public Data(String key, Resource value) {
         this.key = key;
         this.value = value;
     }
@@ -19,11 +20,11 @@ public class Data {
         this.key = key;
     }
 
-    public String getValue() {
+    public Resource getValue() {
         return value;
     }
 
-    public void setValue(String value) {
+    public void setValue(Resource value) {
         this.value = value;
     }
 
