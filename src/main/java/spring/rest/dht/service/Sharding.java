@@ -38,7 +38,7 @@ public class Sharding implements Dht {
     private HttpHeaders httpHeaders = new HttpHeaders();
 
     @Override
-    public void joinNode(Address address) {
+    public void joinNode(Address address) throws IOException {
         if (node.notJoined(address)) {
             node.joinNode(address);
 
@@ -46,7 +46,49 @@ public class Sharding implements Dht {
             httpHeaders.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Address> httpEntity = new HttpEntity<>(node.getAddress(), httpHeaders);
             restTemplate.postForObject(url, httpEntity, Void.class);
+        } else {
+            if (node.getAllValues().isEmpty()) {
+                String url = String.format("http://%s:%s/storage/distribute", address.getIp(), address.getPort());
+                httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<Address> httpEntity = new HttpEntity<>(node.getAddress(), httpHeaders);
+                restTemplate.postForObject(url, httpEntity, Void.class);
+            } else {
+                distribute(address);
+            }
         }
+    }
+
+    @Override
+    public void distribute(Address address) throws IOException {
+        Address rn;
+        String url;
+        httpHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
+        MultiValueMap<String, Object> data = new LinkedMultiValueMap<>();
+        HttpEntity<MultiValueMap<String, Object>> httpEntity;
+
+        for (var entry : node.getAllValues().entrySet()) {
+            File file = new File(
+                    System.getProperty("user.dir") +
+                            "/storage/" +
+                            node.getAddress().getIp() + ":" + node.getAddress().getPort() + "/" +
+                            entry.getValue()
+            );
+            rn = responsibleNode(Node.sha1(Files.readAllBytes(file.toPath())));
+            if (rn == node.getAddress())
+                continue;
+            Resource resource = new FileSystemResource(file);
+            url = String.format("http://%s:%s/put/direct", rn.getIp(), rn.getPort());
+            data.clear();
+            data.add("file", resource);
+            httpEntity = new HttpEntity<>(data, httpHeaders);
+            restTemplate.postForObject(url, httpEntity, Void.class);
+            file.delete();
+            node.removeValue(Node.sha1(entry.getValue().getBytes()));
+        }
+    }
+
+    private void removeValue() {
+
     }
 
     @Override
@@ -58,7 +100,7 @@ public class Sharding implements Dht {
     public void putValue(MultipartFile file) throws IOException {
         Address rn = responsibleNode(Node.sha1(file.getBytes()));
 
-        String url = String.format("http://%s:%s/put/receiver", rn.getIp(), rn.getPort());
+        String url = String.format("http://%s:%s/put/direct", rn.getIp(), rn.getPort());
         httpHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
 
         MultiValueMap<String, Object> data = new LinkedMultiValueMap<>();
@@ -99,11 +141,13 @@ public class Sharding implements Dht {
     @Override
     public void delete() throws IOException {
         String url;
+        Address address = node.getAddress();
+        removeJoinedNode(address);
         for (var joined : node.getJoinedNodes()) {
             url = String.format(
-                    "http://%s:%s/remove?ip=%s&port=%s",
+                    "http://%s:%s/node/remove?ip=%s&port=%s",
                     joined.getIp(), joined.getPort(),
-                    node.getAddress().getIp(), node.getAddress().getPort()
+                    address.getIp(), address.getPort()
             );
             restTemplate.delete(url);
         }
@@ -116,12 +160,12 @@ public class Sharding implements Dht {
             File file = new File(
                     System.getProperty("user.dir") +
                             "/storage/" +
-                            node.getAddress().getIp() + ":" + node.getAddress().getPort() + "/" +
+                            address.getIp() + ":" + address.getPort() + "/" +
                             entry.getValue()
             );
             Resource resource = new FileSystemResource(file);
             rn = responsibleNode(Node.sha1(Files.readAllBytes(file.toPath())));
-            url = String.format("http://%s:%s/put/receiver", rn.getIp(), rn.getPort());
+            url = String.format("http://%s:%s/put/direct", rn.getIp(), rn.getPort());
             data.add("file", resource);
             httpEntity = new HttpEntity<>(data, httpHeaders);
             restTemplate.postForObject(url, httpEntity, Void.class);
@@ -130,7 +174,7 @@ public class Sharding implements Dht {
     }
 
     private Long weight(Address node, String key) {
-        var bytes = HexUtils.fromHexString(Node.sha1(node.getIp() + node.getPort() + key));
+        var bytes = HexUtils.fromHexString(Node.sha1((node.getIp() + node.getPort() + key).getBytes()));
         return ByteBuffer.wrap(bytes).getLong();
     }
 

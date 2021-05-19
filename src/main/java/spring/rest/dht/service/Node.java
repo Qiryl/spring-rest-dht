@@ -19,8 +19,14 @@ public class Node {
 
     @Autowired
     private Address address;
-    private Set<Address> joinedNodes = new HashSet<Address>();
-    private ConcurrentHashMap<String, String> storage = new ConcurrentHashMap<String, String>();
+    private Set<Address> joinedNodes = new HashSet<>();
+    private ConcurrentHashMap<String, String> storage = new ConcurrentHashMap<>();
+
+    @Autowired
+    public Node(Address address) {
+        this.address = address;
+        joinNode(address);
+    }
 
     public Address getAddress() {
         return address;
@@ -31,7 +37,7 @@ public class Node {
     }
 
     public void joinNode(Address address) {
-        address.setId(sha1(address.getIp() + address.getPort()));
+        address.setId(sha1((address.getIp() + address.getPort()).getBytes()));
         joinedNodes.add(address);
     }
 
@@ -51,6 +57,10 @@ public class Node {
         return storage;
     }
 
+    public void setStorage(ConcurrentHashMap<String, String> storage) {
+        this.storage = storage;
+    }
+
     public String get(String key) {
         return storage.get(key);
     }
@@ -60,8 +70,7 @@ public class Node {
     }
 
     public void put(MultipartFile file) throws IOException {
-        storage.put(sha1(file.getOriginalFilename()), file.getOriginalFilename());
-        System.out.println(System.getProperty("user.dir") + "/storage/" + file.getOriginalFilename());
+        storage.put(sha1(file.getOriginalFilename().getBytes()), file.getOriginalFilename());
         File destination = new File(
                 System.getProperty("user.dir") +
                         "/storage/" +
@@ -70,16 +79,6 @@ public class Node {
         );
         destination.mkdirs();
         file.transferTo(destination);
-    }
-
-    public static String sha1(String input) {
-        String sha1 = null;
-        try {
-            MessageDigest mDigest = MessageDigest.getInstance("SHA1");
-            byte[] result = mDigest.digest(input.getBytes());
-            sha1 = HexUtils.toHexString(result);
-        } catch (NoSuchAlgorithmException e) { e.printStackTrace(); }
-        return sha1;
     }
 
     public static String sha1(byte[] input) {

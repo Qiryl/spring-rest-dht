@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ApplicationContext;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -14,6 +16,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import spring.rest.dht.model.Address;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,10 +41,42 @@ public class Replication implements Dht {
 
             String url = String.format("http://%s:%s/join", address.getIp(), address.getPort());
             httpHeaders.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Address> httpEntity = new HttpEntity<Address>(node.getAddress(), httpHeaders);
+            HttpEntity<Address> httpEntity = new HttpEntity<>(node.getAddress(), httpHeaders);
+            restTemplate.postForObject(url, httpEntity, Void.class);
+        } else {
+            if (node.getAllValues().isEmpty()) {
+                String url = String.format("http://%s:%s/storage/distribute", address.getIp(), address.getPort());
+                httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+                HttpEntity<Address> httpEntity = new HttpEntity<>(node.getAddress(), httpHeaders);
+                restTemplate.postForObject(url, httpEntity, Void.class);
+            } else {
+                distribute(address);
+            }
+        }
+    }
+
+    @Override
+    public void distribute(Address address) {
+        httpHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
+        MultiValueMap<String, Object> data = new LinkedMultiValueMap<>();
+        HttpEntity<MultiValueMap<String, Object>> httpEntity;
+        String url;
+        for (var entry : node.getAllValues().entrySet()) {
+            File file = new File(
+                    System.getProperty("user.dir") +
+                            "/storage/" +
+                            node.getAddress().getIp() + ":" + node.getAddress().getPort() + "/" +
+                            entry.getValue()
+            );
+            Resource resource = new FileSystemResource(file);
+            url = String.format("http://%s:%s/put/direct", address.getIp(), address.getPort());
+            data.clear();
+            data.add("file", resource);
+            httpEntity = new HttpEntity<>(data, httpHeaders);
             restTemplate.postForObject(url, httpEntity, Void.class);
         }
     }
+
 
     @Override
     public Set<Address> getJoinedNodes() {
@@ -50,8 +85,6 @@ public class Replication implements Dht {
 
     @Override
     public void putValue(MultipartFile file) throws IOException {
-        node.put(file);
-
         String url;
         HttpEntity<MultiValueMap<String, Object>> httpEntity;
         httpHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -59,7 +92,7 @@ public class Replication implements Dht {
         body.add("file", file.getResource());
 
         for (var joined : node.getJoinedNodes()) {
-            url = String.format("http://%s:%s/put/receiver", joined.getIp(), joined.getPort());
+            url = String.format("http://%s:%s/put/direct", joined.getIp(), joined.getPort());
             httpEntity = new HttpEntity<>(body, httpHeaders);
             restTemplate.postForObject(url, httpEntity, Void.class);
         }
@@ -88,11 +121,13 @@ public class Replication implements Dht {
     @Override
     public void delete() {
         String url;
+        Address address = node.getAddress();
+        removeJoinedNode(address);
         for (var joined : node.getJoinedNodes()) {
             url = String.format(
-                    "http://%s:%s/remove?ip=%s&port=%s",
+                    "http://%s:%s/node/remove?ip=%s&port=%s",
                     joined.getIp(), joined.getPort(),
-                    node.getAddress().getIp(), node.getAddress().getPort()
+                    address.getIp(), address.getPort()
             );
             restTemplate.delete(url);
         }

@@ -12,7 +12,7 @@ public class Address {
     private String port;
 
     public Address(@Value("${server.address}") String ip, @Value("${server.port}") String port) {
-        this.id = Node.sha1(ip + port);
+        this.id = Node.sha1((ip + port).getBytes());
         this.ip = ip;
         this.port = port;
     }
@@ -39,15 +39,6 @@ public class Address {
 
     public void setIp(String ip) {
         this.ip = ip;
-    }
-
-    @Override
-    public String toString() {
-        return "Address{" +
-                "id='" + id + '\'' +
-                ", ip='" + ip + '\'' +
-                ", port='" + port + '\'' +
-                '}';
     }
 
 }

@@ -30,7 +30,7 @@ public class DhtController {
     }
 
     @PostMapping("/join")
-    public void join(@RequestBody Address address) {
+    public void join(@RequestBody Address address) throws IOException {
         dht.joinNode(address);
     }
 
@@ -44,7 +44,7 @@ public class DhtController {
         dht.putValue(file);
     }
 
-    @PostMapping(value = "/put/receiver")
+    @PostMapping(value = "/put/direct")
     public void putDirect(@RequestParam("file") MultipartFile file) throws Exception {
         dht.putDirect(file);
     }
@@ -59,8 +59,13 @@ public class DhtController {
         return dht.getAllValues();
     }
 
+    @PostMapping(value = "/storage/distribute")
+    public void distribute(@RequestBody Address address) throws IOException {
+        dht.distribute(address);
+    }
+
     // curl -X DELETE "http://localhost:8081/remove?ip=localhost&port=8080"
-    @DeleteMapping("/remove")
+    @DeleteMapping("/node/remove")
     public void removeJoinedNode(@RequestParam("ip") String ip, @RequestParam("port") String port) {
         dht.removeJoinedNode(new Address(ip, port));
     }
