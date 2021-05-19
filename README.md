@@ -11,7 +11,7 @@ java -jar build/libs/dht-0.0.1-SNAPSHOT.jar --server.port=8082
 ```
 
 ## Join nodes
-### Join first two nodes
+#### Join first two nodes
 ```
 curl -H "Content-Type: application/json" -X POST -d '{"ip":"localhost", "port":"8081"}' http://localhost:8080/join 
 ```
